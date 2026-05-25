@@ -1,5 +1,102 @@
-import type { AppProps } from 'next/app'
-import '../styles/globals.css'
-export default function App({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />
+/* app.module.css */
+.main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  background: #f8f9fa;
 }
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 100;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; }
+.title { font-size: 20px; font-weight: 600; color: #111; }
+.subtitle { font-size: 13px; color: #888; margin-top: 2px; }
+.pill { font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+.tabs { display: flex; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-bottom: 1.25rem; background: #fff; }
+.tab { flex: 1; padding: 10px 6px; font-size: 13px; background: transparent; border: none; cursor: pointer; color: #888; transition: all .15s; }
+.tab:not(:last-child) { border-right: 1px solid #e0e0e0; }
+.tab.active { background: #f1f3f4; color: #111; font-weight: 500; }
+.statsRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+.stat { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: .75rem 1rem; text-align: center; }
+.statNum { font-size: 22px; font-weight: 600; color: #111; }
+.statLbl { font-size: 12px; color: #888; margin-top: 2px; }
+.filterRow { display: flex; gap: 6px; margin-bottom: 1rem; }
+.filterBtn { padding: 5px 14px; font-size: 13px; border: 1px solid #e0e0e0; border-radius: 20px; background: #fff; cursor: pointer; color: #555; }
+.filterBtn.active { background: #111; color: #fff; border-color: #111; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.card { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+.card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.card.voted { border: 2px solid #378ADD; }
+.cardImg { width: 100%; height: 130px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 48px; overflow: hidden; }
+.cardImg img { width: 100%; height: 130px; object-fit: cover; }
+.cardBody { padding: .75rem; }
+.cardName { font-size: 14px; font-weight: 500; color: #111; line-height: 1.4; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 40px; }
+.cardPrice { font-size: 16px; font-weight: 600; color: #D85A30; margin-bottom: 6px; }
+.cardMeta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.storeTag { font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+.typeTag { font-size: 11px; padding: 2px 7px; border-radius: 10px; }
+.barRow { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.barWrap { flex: 1; height: 4px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+.bar { height: 100%; background: #378ADD; border-radius: 4px; transition: width .3s; }
+.barLabel { font-size: 12px; color: #888; min-width: 32px; text-align: right; }
+.voteBtn { width: 100%; padding: 7px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; font-size: 13px; color: #333; margin-bottom: 6px; transition: all .15s; }
+.voteBtn:hover:not(:disabled) { background: #f5f5f5; }
+.voteBtn:disabled { opacity: .4; cursor: default; }
+.voteBtnActive { background: #E6F1FB !important; border-color: #378ADD !important; color: #0C447C !important; font-weight: 500; }
+.storeLink { display: block; font-size: 12px; color: #378ADD; text-decoration: none; text-align: center; }
+.storeLink:hover { text-decoration: underline; }
+.sectionLabel { font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .75rem; }
+.resultRow { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: .875rem 1rem; margin-bottom: .625rem; display: flex; align-items: center; gap: 12px; }
+.rankNum { font-size: 18px; font-weight: 600; width: 32px; text-align: center; flex-shrink: 0; }
+.resultThumb { width: 52px; height: 52px; border-radius: 8px; background: #f5f5f5; font-size: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+.resultThumb img { width: 52px; height: 52px; object-fit: cover; }
+.resultInfo { flex: 1; min-width: 0; }
+.resultName { font-size: 14px; font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.resultSub { display: flex; align-items: center; margin-top: 2px; margin-bottom: 4px; }
+.resultBarWrap { height: 5px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+.resultBar { height: 100%; border-radius: 4px; transition: width .4s; }
+.resultRight { text-align: right; flex-shrink: 0; min-width: 64px; }
+.resultVotes { font-size: 20px; font-weight: 600; color: #111; }
+.buyLink { display: inline-block; margin-top: 4px; font-size: 12px; color: #378ADD; text-decoration: none; font-weight: 500; }
+.buyLink:hover { text-decoration: underline; }
+.addBox { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+.urlRow { display: flex; gap: 8px; margin-bottom: .5rem; }
+.urlInput { flex: 1; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+.urlInput:focus { border-color: #378ADD; }
+.fetchBtn { padding: 9px 16px; background: #111; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.fetchBtn:hover { background: #333; }
+.fetchBtn:disabled { opacity: .5; cursor: default; }
+.hint { font-size: 12px; color: #aaa; margin-bottom: .75rem; }
+.manualBtn { font-size: 13px; padding: 6px 14px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; color: #555; }
+.manualBtn:hover { background: #f5f5f5; }
+.previewCard { display: flex; gap: 12px; }
+.previewImg { width: 80px; height: 80px; min-width: 80px; border-radius: 8px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.formLabel { font-size: 11px; color: #888; margin-bottom: 3px; }
+.formGrid input, .formGrid select { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; }
+.formGrid input:focus, .formGrid select:focus { border-color: #378ADD; }
+.confirmBtn { padding: 8px 18px; background: #1D9E75; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.confirmBtn:hover { background: #178a65; }
+.confirmBtn:disabled { opacity: .5; cursor: default; }
+.adminActions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+.actionBtn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; font-size: 13px; color: #333; }
+.actionBtn:hover { background: #f5f5f5; }
+.sessionInfo { font-size: 14px; color: #444; padding: .75rem 1rem; background: #f9f9f9; border-radius: 8px; margin-bottom: .5rem; }
+.adminRow { display: flex; align-items: center; gap: 10px; padding: .75rem 1rem; background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; margin-bottom: .5rem; }
+.delBtn { margin-left: auto; padding: 5px 10px; font-size: 12px; border: 1px solid #fcc; border-radius: 6px; background: #fff; cursor: pointer; color: #c00; }
+.delBtn:hover { background: #fff0f0; }
+.empty { text-align: center; padding: 3rem 1rem; color: #aaa; font-size: 14px; }
+.linkBtn { background: none; border: none; color: #378ADD; cursor: pointer; font-size: 14px; text-decoration: underline; }
