@@ -6,10 +6,10 @@ import styles from '../styles/app.module.css'
 
 const STORE_STYLE: Record<string, { bg: string; color: string }> = {
   全聯: { bg: '#E1F5EE', color: '#0F6E56' },
-  家樂福: { bg: '#E6F1FB', color: '#185FA5' },
-  momo: { bg: '#FAECE7', color: '#993C1D' },
-  蝦皮: { bg: '#FCEBEB', color: '#A32D2D' },
-  官網: { bg: '#F1EFE8', color: '#5F5E5A' },
+  
+  
+  
+  
   其他: { bg: '#F1EFE8', color: '#5F5E5A' },
 }
 
@@ -371,7 +371,7 @@ export default function Home() {
                   {fetching ? '讀取中…' : '自動帶入'}
                 </button>
               </div>
-              <div className={styles.hint}>支援：全聯、家樂福、momo、蝦皮；或點下方手動填寫</div>
+              <div className={styles.hint}>貼上全聯商品網址自動帶入；其他賣場請手動填寫</div>
               {!preview && (
                 <button className={styles.manualBtn} onClick={showManual}>手動填寫</button>
               )}
@@ -402,7 +402,8 @@ export default function Home() {
                       <div>
                         <div className={styles.formLabel}>賣場</div>
                         <select value={formStore} onChange={e => setFormStore(e.target.value)}>
-                          {Object.keys(STORE_STYLE).map(s => <option key={s}>{s}</option>)}
+                          <option>全聯</option>
+                        <option>其他</option>
                         </select>
                       </div>
                     </div>
