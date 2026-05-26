@@ -196,7 +196,7 @@ export default function Home() {
   const filtered = items.filter(i => filter === 'all' || i.type === filter)
   const maxVotes = Math.max(...items.map(i => i.vote_count), 1)
   const totalVotes = items.reduce((a, i) => a + i.vote_count, 0)
-  const budget = items.slice(0, 3).reduce((a, i) => a + (i.price || 0) * 2, 0)
+  const budget = items.slice(0, 20).reduce((a, i) => a + (i.price || 0), 0)
 
   return (
     <>
@@ -312,7 +312,7 @@ export default function Home() {
             <div className={styles.statsRow}>
               <div className={styles.stat}><div className={styles.statNum}>{items.length}</div><div className={styles.statLbl}>候選品項</div></div>
               <div className={styles.stat}><div className={styles.statNum}>{totalVotes}</div><div className={styles.statLbl}>累計票數</div></div>
-              <div className={styles.stat}><div className={styles.statNum}>NT${budget}</div><div className={styles.statLbl}>前3名×2份預算</div></div>
+              <div className={styles.stat}><div className={styles.statNum}>NT${budget}</div><div className={styles.statLbl}>前20名預算估計</div></div>
             </div>
             <div className={styles.sectionLabel}>得票排名（即時・公開）</div>
             {[...items].sort((a, b) => b.vote_count - a.vote_count).map((item, i) => {
