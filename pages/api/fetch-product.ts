@@ -1,21 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-const STORE_HINTS: Record<string, string> = {
-  'pxgo.com.tw': '全聯',
-  'pxmart.com.tw': '全聯',
-  'carrefour.com.tw': '家樂福',
-  'momoshop.com.tw': 'momo',
-  'momo.com.tw': 'momo',
-  'shopee.tw': '蝦皮',
-}
-
-function detectStore(url: string): string {
-  for (const [domain, name] of Object.entries(STORE_HINTS)) {
-    if (url.includes(domain)) return name
-  }
-  return '其他'
-}
-
 function extractMeta(html: string, property: string): string {
   const patterns = [
     new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
@@ -51,8 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).end()
   const { url } = req.body as { url: string }
   if (!url || !url.startsWith('http')) return res.status(400).json({ error: '請提供有效的商品網址' })
-
-  const store = detectStore(url)
+  if (!url.includes('pxgo.com.tw') && !url.includes('pxmart.com.tw')) {
+    return res.status(400).json({ error: '目前僅支援全聯商品網址（pxgo.com.tw）' })
+  }
 
   try {
     const controller = new AbortController()
@@ -68,16 +53,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     clearTimeout(timeout)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const html = await response.text()
-    const rawName = extractTitle(html)
-    const name = rawName
-      .replace(/^\s*(全聯|家樂福|momo購物|蝦皮購物)\s*[|-]\s*/i, '')
-      .replace(/\s*[|-]\s*(全聯|家樂福|momo購物|蝦皮購物)\s*$/i, '')
+    const name = extractTitle(html)
+      .replace(/^\s*全聯\s*[|-]\s*/i, '')
+      .replace(/\s*[|-]\s*全聯\s*$/i, '')
+      .replace(/\s*-\s*全聯小時達\s*$/i, '')
       .slice(0, 60)
     const image_url = extractMeta(html, 'og:image') || null
     const price = extractPrice(html)
-    return res.status(200).json({ name: name || '請手動填寫商品名稱', image_url, price, store, url })
+    return res.status(200).json({ name: name || '請手動填寫商品名稱', image_url, price, store: '全聯', url })
   } catch (e: any) {
-    // 抓取失敗時仍回傳賣場資訊，讓使用者手動補填
-    return res.status(200).json({ name: '', image_url: null, price: null, store, url })
+    if (e.name === 'AbortError') return res.status(408).json({ error: '連線逾時，請稍後再試' })
+    return res.status(500).json({ error: '無法取得商品資料，請手動填寫' })
   }
 }
