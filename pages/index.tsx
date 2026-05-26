@@ -361,7 +361,7 @@ export default function Home() {
               <div className={styles.urlRow}>
                 <input
                   type="text"
-                  placeholder="貼上全聯 / 家樂福 / momo / 蝦皮 商品網址…"
+                  placeholder="貼上全聯商品網址（shop.pxgo.com.tw）…"
                   value={urlInput}
                   onChange={e => setUrlInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && fetchProduct()}
