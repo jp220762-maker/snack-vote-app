@@ -1,4 +1,4 @@
- import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import { supabase, SnackItem, VoteSession } from '../lib/supabase'
 import { getVoterFingerprint } from '../lib/fingerprint'
@@ -55,6 +55,8 @@ export default function Home() {
   const [editingRules, setEditingRules] = useState(false)
   const [rulesInput, setRulesInput] = useState('')
   const [savingRules, setSavingRules] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleInput, setTitleInput] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
 
   function showToast(msg: string) {
@@ -85,9 +87,7 @@ export default function Home() {
     const { error } = await supabase.from('settings').upsert({ key: 'vote_rules', value: rulesInput })
     setSavingRules(false)
     if (error) return showToast('儲存失敗：' + error.message)
-    setRules(rulesInput)
-    setEditingRules(false)
-    showToast('規則已更新！')
+    setRules(rulesInput); setEditingRules(false); showToast('規則已更新！')
   }
 
   async function loadSession() {
@@ -127,18 +127,14 @@ export default function Home() {
       const res = await fetch('/api/fetch-product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: urlInput.trim() }) })
       const data = await res.json()
       if (!res.ok) { showToast(data.error || '抓取失敗，請手動填寫'); showManual(); return }
-      setPreview(data)
-      setFormName(data.name || '')
-      setFormPrice(data.price ? String(data.price) : '')
-      setFormStore(data.store || '其他')
+      setPreview(data); setFormName(data.name || ''); setFormPrice(data.price ? String(data.price) : ''); setFormStore(data.store || '其他')
       if (data.name) showToast('商品資料已帶入，請確認後加入')
       else showToast('請手動填寫商品資料')
     } finally { setFetching(false) }
   }
 
   function showManual() {
-    setPreview({ url: urlInput || '', image_url: null })
-    setFormName(''); setFormPrice(''); setFormType('snack'); setFormStore('全聯')
+    setPreview({ url: urlInput || '', image_url: null }); setFormName(''); setFormPrice(''); setFormType('snack'); setFormStore('全聯')
   }
 
   async function submitItem() {
@@ -161,6 +157,12 @@ export default function Home() {
     const title = prompt('票選標題', '本週零食票選') || '本週零食票選'
     await supabase.from('vote_sessions').insert({ title, is_open: true })
     loadSession(); showToast('新票選週期已建立')
+  }
+
+  async function saveTitle() {
+    if (!session || !titleInput.trim()) return
+    await supabase.from('vote_sessions').update({ title: titleInput.trim() }).eq('id', session.id)
+    setEditingTitle(false); loadSession(); showToast('標題已更新！')
   }
 
   async function toggleSession() {
@@ -230,7 +232,6 @@ export default function Home() {
         {/* ── VOTE TAB ── */}
         {tab === 'vote' && (
           <>
-            {/* 投票規則區塊 */}
             <div className={styles.rulesBox}>
               <div className={styles.rulesTitle}>📋 投票規則</div>
               <div className={styles.rulesContent}>
@@ -239,7 +240,6 @@ export default function Home() {
                 ))}
               </div>
             </div>
-
             <div className={styles.statsRow}>
               <div className={styles.stat}><div className={styles.statNum}>{items.length}</div><div className={styles.statLbl}>候選品項</div></div>
               <div className={styles.stat}><div className={styles.statNum}>{totalVotes}</div><div className={styles.statLbl}>累計票數</div></div>
@@ -377,12 +377,26 @@ export default function Home() {
                   <button className={styles.actionBtn} onClick={createSession}>＋ 建立新週期</button>
                   {session && <button className={styles.actionBtn} onClick={toggleSession}>{session.is_open ? '⏸ 關閉投票' : '▶ 開放投票'}</button>}
                 </div>
+
                 {session && (
                   <div className={styles.sessionInfo}>
-                    目前週期：<strong>{session.title}</strong>
-                    <span className={styles.pill} style={{ marginLeft: 8, fontSize: 11, background: session.is_open ? '#EAF3DE' : '#FAEEDA', color: session.is_open ? '#3B6D11' : '#854F0B' }}>
-                      {session.is_open ? '開放中' : '已關閉'}
-                    </span>
+                    {editingTitle ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input type="text" value={titleInput} onChange={e => setTitleInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && saveTitle()}
+                          style={{ flex: 1, padding: '6px 10px', border: '1.5px solid #113285', borderRadius: 8, fontSize: 15, fontWeight: 500, outline: 'none' }} />
+                        <button className={styles.confirmBtn} style={{ padding: '6px 14px' }} onClick={saveTitle}>儲存</button>
+                        <button className={styles.manualBtn} style={{ padding: '6px 14px' }} onClick={() => setEditingTitle(false)}>取消</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span>目前週期：<strong>{session.title}</strong></span>
+                        <span className={styles.pill} style={{ fontSize: 11, background: session.is_open ? '#EAF3DE' : '#FAEEDA', color: session.is_open ? '#3B6D11' : '#854F0B' }}>
+                          {session.is_open ? '開放中' : '已關閉'}
+                        </span>
+                        <button className={styles.actionBtn} style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => { setTitleInput(session.title); setEditingTitle(true) }}>✏️ 修改標題</button>
+                      </div>
+                    )}
                   </div>
                 )}
 
