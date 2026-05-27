@@ -1,4 +1,4 @@
-         import { useEffect, useState, useRef } from 'react'
+ import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import { supabase, SnackItem, VoteSession } from '../lib/supabase'
 import { getVoterFingerprint } from '../lib/fingerprint'
@@ -25,6 +25,12 @@ const DEFAULT_BUDGET = 4000
 const SNACK_RATIO = 0.7
 const DRINK_RATIO = 0.3
 
+const DEFAULT_RULES = `1. 每人可投多個品項，每項限投一票
+2. 投票期間由管理員公告，截止後自動關閉
+3. 新增品項以全聯為主，貼上商品網址可自動帶入資料；其他賣場請手動填寫名稱與價格
+4. 票選結果僅供採購參考，最終採購名單由管理員決定
+5. 請理性票選，勿重複以不同裝置灌票`
+
 export default function Home() {
   const [tab, setTab] = useState<'vote' | 'results' | 'add' | 'admin'>('vote')
   const [session, setSession] = useState<VoteSession | null>(null)
@@ -45,6 +51,10 @@ export default function Home() {
   const [budgetLimit, setBudgetLimit] = useState(DEFAULT_BUDGET)
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
   const [planGenerated, setPlanGenerated] = useState(false)
+  const [rules, setRules] = useState(DEFAULT_RULES)
+  const [editingRules, setEditingRules] = useState(false)
+  const [rulesInput, setRulesInput] = useState('')
+  const [savingRules, setSavingRules] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
 
   function showToast(msg: string) {
@@ -53,7 +63,7 @@ export default function Home() {
     toastTimer.current = setTimeout(() => setToast(''), 2200)
   }
 
-  useEffect(() => { loadSession() }, [])
+  useEffect(() => { loadSession(); loadRules() }, [])
 
   useEffect(() => {
     if (!session) return
@@ -64,6 +74,21 @@ export default function Home() {
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [session?.id])
+
+  async function loadRules() {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'vote_rules').single()
+    if (data?.value) setRules(data.value)
+  }
+
+  async function saveRules() {
+    setSavingRules(true)
+    const { error } = await supabase.from('settings').upsert({ key: 'vote_rules', value: rulesInput })
+    setSavingRules(false)
+    if (error) return showToast('儲存失敗：' + error.message)
+    setRules(rulesInput)
+    setEditingRules(false)
+    showToast('規則已更新！')
+  }
 
   async function loadSession() {
     const { data } = await supabase.from('vote_sessions').select('*').order('created_at', { ascending: false }).limit(1).single()
@@ -113,10 +138,7 @@ export default function Home() {
 
   function showManual() {
     setPreview({ url: urlInput || '', image_url: null })
-    setFormName('')
-    setFormPrice('')
-    setFormType('snack')
-    setFormStore('全聯')
+    setFormName(''); setFormPrice(''); setFormType('snack'); setFormStore('全聯')
   }
 
   async function submitItem() {
@@ -208,6 +230,16 @@ export default function Home() {
         {/* ── VOTE TAB ── */}
         {tab === 'vote' && (
           <>
+            {/* 投票規則區塊 */}
+            <div className={styles.rulesBox}>
+              <div className={styles.rulesTitle}>📋 投票規則</div>
+              <div className={styles.rulesContent}>
+                {rules.split('\n').map((line, i) => (
+                  <div key={i} className={styles.rulesLine}>{line}</div>
+                ))}
+              </div>
+            </div>
+
             <div className={styles.statsRow}>
               <div className={styles.stat}><div className={styles.statNum}>{items.length}</div><div className={styles.statLbl}>候選品項</div></div>
               <div className={styles.stat}><div className={styles.statNum}>{totalVotes}</div><div className={styles.statLbl}>累計票數</div></div>
@@ -304,7 +336,7 @@ export default function Home() {
                 <input type="text" placeholder="貼上任何購物網站商品網址…" value={urlInput} onChange={e => setUrlInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchProduct()} className={styles.urlInput} />
                 <button className={styles.fetchBtn} onClick={fetchProduct} disabled={fetching}>{fetching ? '讀取中…' : '自動帶入'}</button>
               </div>
-              <div className={styles.hint}>支援全聯自動帶入圖片與價格；其他賣場可帶入名稱，圖片和價格請手動確認</div>
+              <div className={styles.hint}>支援全聯自動帶入圖片與價格；其他賣場可帶入賣場名稱，請手動確認名稱與價格</div>
               {!preview && <button className={styles.manualBtn} onClick={showManual}>手動填寫</button>}
               {preview && (
                 <div className={styles.previewCard}>
@@ -354,8 +386,32 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* 採購名單 — 管理員限定 */}
-                <div className={styles.addBox} style={{ marginTop: '1.5rem' }}>
+                {/* 投票規則編輯 */}
+                <div className={styles.addBox} style={{ marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <div className={styles.sectionLabel} style={{ margin: 0 }}>投票規則編輯</div>
+                    {!editingRules && (
+                      <button className={styles.actionBtn} style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => { setRulesInput(rules); setEditingRules(true) }}>✏️ 編輯</button>
+                    )}
+                  </div>
+                  {editingRules ? (
+                    <>
+                      <textarea value={rulesInput} onChange={e => setRulesInput(e.target.value)}
+                        style={{ width: '100%', minHeight: 160, padding: '10px 12px', border: '1.5px solid #113285', borderRadius: 10, fontSize: 14, lineHeight: 1.7, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button className={styles.confirmBtn} onClick={saveRules} disabled={savingRules}>{savingRules ? '儲存中…' : '✓ 儲存'}</button>
+                        <button className={styles.manualBtn} onClick={() => setEditingRules(false)}>取消</button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>
+                      {rules.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                    </div>
+                  )}
+                </div>
+
+                {/* 採購名單 */}
+                <div className={styles.addBox} style={{ marginTop: '1rem' }}>
                   <div className={styles.sectionLabel}>採購名單規劃</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 14, color: '#6b7280' }}>總預算上限</span>
@@ -371,7 +427,7 @@ export default function Home() {
                   </div>
                   {planGenerated && (
                     <div style={{ fontSize: 13, color: '#6b7280', padding: '8px 12px', background: '#EEF2FF', borderRadius: 8, borderLeft: '3px solid #113285' }}>
-                      已依票數高低及預算比例自動勾選，請確認每項是否達 10 份以上，可手動調整勾選。
+                      已依票數高低及預算比例自動勾選，可手動調整勾選。
                     </div>
                   )}
                 </div>
@@ -390,7 +446,6 @@ export default function Home() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1a1a2e' }}>{item.name}</div>
                         <div style={{ fontSize: 12, color: '#6b7280' }}>{item.vote_count} 票 · NT${item.price ?? '—'} · {item.store}</div>
-                        {planGenerated && <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>⚠️ 請確認是否達 10 份以上</div>}
                       </div>
                       {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.buyLink} style={{ marginRight: 8 }}>下單 →</a>}
                       <button className={styles.delBtn} onClick={() => deleteItem(item.id)}>刪除</button>
@@ -416,4 +471,3 @@ export default function Home() {
     </>
   )
 }
-  
