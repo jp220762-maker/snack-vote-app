@@ -50,6 +50,7 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false)
   const [budgetLimit, setBudgetLimit] = useState(DEFAULT_BUDGET)
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [planGenerated, setPlanGenerated] = useState(false)
   const [rules, setRules] = useState(DEFAULT_RULES)
   const [editingRules, setEditingRules] = useState(false)
@@ -184,23 +185,48 @@ export default function Home() {
     const snacks = sorted.filter(i => i.type === 'snack')
     const drinks = sorted.filter(i => i.type === 'drink')
     const selected = new Set<string>()
+    const newQty: Record<string, number> = {}
     let snackSpent = 0, drinkSpent = 0
     for (const item of snacks) {
       const p = item.price || 0
-      if (snackSpent + p <= snackBudget) { selected.add(item.id); snackSpent += p }
+      if (snackSpent + p <= snackBudget) { selected.add(item.id); snackSpent += p; newQty[item.id] = 1 }
     }
     for (const item of drinks) {
       const p = item.price || 0
-      if (drinkSpent + p <= drinkBudget) { selected.add(item.id); drinkSpent += p }
+      if (drinkSpent + p <= drinkBudget) { selected.add(item.id); drinkSpent += p; newQty[item.id] = 1 }
     }
-    setCheckedItems(selected); setPlanGenerated(true)
+    setCheckedItems(selected); setQuantities(newQty); setPlanGenerated(true)
   }
+
+  function setQty(id: string, val: number) {
+    setQuantities(prev => ({ ...prev, [id]: Math.max(1, val) }))
+  }
+
+  function toggleCheck(id: string, checked: boolean) {
+    setCheckedItems(prev => {
+      const s = new Set(prev)
+      if (checked) { s.add(id); setQuantities(q => ({ ...q, [id]: q[id] || 1 })) }
+      else s.delete(id)
+      return s
+    })
+  }
+
+  // 試算
+  const checkedList = items.filter(i => checkedItems.has(i.id))
+  const snackList = checkedList.filter(i => i.type === 'snack')
+  const drinkList = checkedList.filter(i => i.type === 'drink')
+  const snackTotal = snackList.reduce((a, i) => a + (i.price || 0) * (quantities[i.id] || 1), 0)
+  const drinkTotal = drinkList.reduce((a, i) => a + (i.price || 0) * (quantities[i.id] || 1), 0)
+  const checkedTotal = snackTotal + drinkTotal
+  const snackBudget = Math.round(budgetLimit * SNACK_RATIO)
+  const drinkBudget = Math.round(budgetLimit * DRINK_RATIO)
+  const overBudget = checkedTotal > budgetLimit
+  const overSnack = snackTotal > snackBudget
+  const overDrink = drinkTotal > drinkBudget
 
   const filtered = items.filter(i => filter === 'all' || i.type === filter)
   const maxVotes = Math.max(...items.map(i => i.vote_count), 1)
   const totalVotes = items.reduce((a, i) => a + i.vote_count, 0)
-  const checkedTotal = items.filter(i => checkedItems.has(i.id)).reduce((a, i) => a + (i.price || 0), 0)
-  const overBudget = checkedTotal > budgetLimit
   const allStores = Object.keys(STORE_STYLE)
 
   return (
@@ -235,9 +261,7 @@ export default function Home() {
             <div className={styles.rulesBox}>
               <div className={styles.rulesTitle}>📋 投票規則</div>
               <div className={styles.rulesContent}>
-                {rules.split('\n').map((line, i) => (
-                  <div key={i} className={styles.rulesLine}>{line}</div>
-                ))}
+                {rules.split('\n').map((line, i) => <div key={i} className={styles.rulesLine}>{line}</div>)}
               </div>
             </div>
             <div className={styles.statsRow}>
@@ -382,8 +406,7 @@ export default function Home() {
                   <div className={styles.sessionInfo}>
                     {editingTitle ? (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <input type="text" value={titleInput} onChange={e => setTitleInput(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && saveTitle()}
+                        <input type="text" value={titleInput} onChange={e => setTitleInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveTitle()}
                           style={{ flex: 1, padding: '6px 10px', border: '1.5px solid #113285', borderRadius: 8, fontSize: 15, fontWeight: 500, outline: 'none' }} />
                         <button className={styles.confirmBtn} style={{ padding: '6px 14px' }} onClick={saveTitle}>儲存</button>
                         <button className={styles.manualBtn} style={{ padding: '6px 14px' }} onClick={() => setEditingTitle(false)}>取消</button>
@@ -426,7 +449,7 @@ export default function Home() {
 
                 {/* 採購名單 */}
                 <div className={styles.addBox} style={{ marginTop: '1rem' }}>
-                  <div className={styles.sectionLabel}>採購名單規劃</div>
+                  <div className={styles.sectionLabel}>採購名單規劃與試算</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 14, color: '#6b7280' }}>總預算上限</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -435,33 +458,68 @@ export default function Home() {
                         style={{ width: 90, padding: '6px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 15, fontWeight: 500 }} />
                     </div>
                     <span style={{ fontSize: 12, color: '#6b7280' }}>
-                      零食 NT${Math.round(budgetLimit * SNACK_RATIO)} ／ 飲料 NT${Math.round(budgetLimit * DRINK_RATIO)}
+                      零食上限 NT${snackBudget}（70%）／ 飲料上限 NT${drinkBudget}（30%）
                     </span>
                     <button className={styles.confirmBtn} onClick={generatePlan}>自動產生採購名單</button>
                   </div>
+
+                  {/* 試算結果 */}
                   {planGenerated && (
-                    <div style={{ fontSize: 13, color: '#6b7280', padding: '8px 12px', background: '#EEF2FF', borderRadius: 8, borderLeft: '3px solid #113285' }}>
-                      已依票數高低及預算比例自動勾選，可手動調整勾選。
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+                      <div style={{ padding: '10px 14px', borderRadius: 10, background: overSnack ? '#FFF1F2' : '#EEF2FF', border: `1.5px solid ${overSnack ? '#fca5a5' : '#c7d2fe'}` }}>
+                        <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginBottom: 4 }}>零食小計</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: overSnack ? '#dc2626' : '#113285' }}>NT${snackTotal}</div>
+                        <div style={{ fontSize: 11, color: overSnack ? '#dc2626' : '#6b7280', marginTop: 2 }}>
+                          {overSnack ? `⚠️ 超出上限 NT${snackBudget}` : `上限 NT$${snackBudget}`}
+                        </div>
+                      </div>
+                      <div style={{ padding: '10px 14px', borderRadius: 10, background: overDrink ? '#FFF1F2' : '#EEF2FF', border: `1.5px solid ${overDrink ? '#fca5a5' : '#c7d2fe'}` }}>
+                        <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginBottom: 4 }}>飲料小計</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: overDrink ? '#dc2626' : '#113285' }}>NT${drinkTotal}</div>
+                        <div style={{ fontSize: 11, color: overDrink ? '#dc2626' : '#6b7280', marginTop: 2 }}>
+                          {overDrink ? `⚠️ 超出上限 NT$${drinkBudget}` : `上限 NT$${drinkBudget}`}
+                        </div>
+                      </div>
+                      <div style={{ padding: '10px 14px', borderRadius: 10, background: overBudget ? '#FFF1F2' : '#EAF3DE', border: `1.5px solid ${overBudget ? '#fca5a5' : '#86efac'}` }}>
+                        <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginBottom: 4 }}>總計</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: overBudget ? '#dc2626' : '#0F6E56' }}>NT${checkedTotal}</div>
+                        <div style={{ fontSize: 11, color: overBudget ? '#dc2626' : '#6b7280', marginTop: 2 }}>
+                          {overBudget ? `⚠️ 超出預算 NT$${budgetLimit}` : `預算 NT$${budgetLimit}`}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
 
+                {/* 品項管理 */}
                 <div className={styles.sectionLabel}>品項管理</div>
                 {[...items].sort((a, b) => b.vote_count - a.vote_count).map((item, i) => {
                   const isChecked = checkedItems.has(item.id)
+                  const qty = quantities[item.id] || 1
+                  const subtotal = isChecked ? (item.price || 0) * qty : 0
                   return (
-                    <div key={item.id} className={styles.adminRow} style={{ border: isChecked ? '2px solid #FAC953' : undefined }}>
+                    <div key={item.id} className={styles.adminRow} style={{ border: isChecked ? '2px solid #FAC953' : undefined, flexWrap: 'wrap', gap: 8 }}>
                       {planGenerated && (
-                        <input type="checkbox" checked={isChecked} onChange={e => {
-                          setCheckedItems(prev => { const s = new Set(prev); e.target.checked ? s.add(item.id) : s.delete(item.id); return s })
-                        }} style={{ width: 18, height: 18, cursor: 'pointer', flexShrink: 0, accentColor: '#113285' }} />
+                        <input type="checkbox" checked={isChecked} onChange={e => toggleCheck(item.id, e.target.checked)}
+                          style={{ width: 18, height: 18, cursor: 'pointer', flexShrink: 0, accentColor: '#113285' }} />
                       )}
-                      <div style={{ fontSize: 16 }}>{i + 1}.</div>
+                      <div style={{ fontSize: 15 }}>{i + 1}.</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1a1a2e' }}>{item.name}</div>
-                        <div style={{ fontSize: 12, color: '#6b7280' }}>{item.vote_count} 票 · NT${item.price ?? '—'} · {item.store}</div>
+                        <div style={{ fontSize: 12, color: '#6b7280' }}>
+                          {item.vote_count} 票 · NT${item.price ?? '—'} · {item.store} ·
+                          <span style={{ marginLeft: 4 }}>{item.type === 'drink' ? '🥤 飲料' : '🍿 零食'}</span>
+                        </div>
                       </div>
-                      {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.buyLink} style={{ marginRight: 8 }}>下單 →</a>}
+                      {planGenerated && isChecked && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>數量</span>
+                          <input type="number" min={1} value={qty} onChange={e => setQty(item.id, parseInt(e.target.value) || 1)}
+                            style={{ width: 56, padding: '4px 8px', border: '1.5px solid #113285', borderRadius: 8, fontSize: 14, fontWeight: 500, textAlign: 'center', outline: 'none' }} />
+                          <span style={{ fontSize: 12, color: '#113285', fontWeight: 600, minWidth: 60 }}>= NT${subtotal}</span>
+                        </div>
+                      )}
+                      {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.buyLink}>下單 →</a>}
                       <button className={styles.delBtn} onClick={() => deleteItem(item.id)}>刪除</button>
                     </div>
                   )
@@ -473,7 +531,7 @@ export default function Home() {
                       {overBudget ? `⚠️ 已選 NT$${checkedTotal} 超出預算 NT$${budgetLimit}，請調整` : `✓ 採購清單合計 NT$${checkedTotal}（預算 NT$${budgetLimit}）`}
                     </div>
                     <div style={{ fontSize: 13, color: '#6b7280' }}>
-                      已勾選 {checkedItems.size} 項：{items.filter(i => checkedItems.has(i.id)).map(i => i.name).join('、')}
+                      已勾選 {checkedItems.size} 項：{items.filter(i => checkedItems.has(i.id)).map(i => `${i.name} ×${quantities[i.id] || 1}`).join('、')}
                     </div>
                   </div>
                 )}
