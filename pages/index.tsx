@@ -261,7 +261,7 @@ export default function Home() {
             <div className={styles.rulesBox}>
               <div className={styles.rulesTitle}>📋 投票規則</div>
               <div className={styles.rulesContent}>
-                {rules.split('\n').map((line, i) => <div key={i} className={styles.rulesLine}>{line}</div>)}
+                {rules.split('\n').map((line, i) => <div key={i} className={styles.rulesLine}>{line.split(/(https?:\/\/[^\s]+)/g).map((p,j)=>/(https?:\/\/[^\s]+)/.test(p)?<a key={j} href={p} target="_blank" rel="noopener noreferrer" style={{color:'#113285',fontWeight:600}}>{p}</a>:p)}</div>)}
               </div>
             </div>
             <div className={styles.statsRow}>
