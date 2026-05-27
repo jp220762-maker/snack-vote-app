@@ -279,3 +279,21 @@
 .delBtn:hover { background: #fff1f1; }
 .empty { text-align: center; padding: 4rem 1rem; color: #6b7280; font-size: 15px; }
 .linkBtn { background: none; border: none; color: #113285; cursor: pointer; font-size: 15px; font-weight: 600; text-decoration: underline; }
+
+.rulesBox {
+  background: #EEF2FF;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #113285;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.rulesTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #113285;
+  margin-bottom: 8px;
+  letter-spacing: .01em;
+}
+.rulesContent { display: flex; flex-direction: column; gap: 4px; }
+.rulesLine { font-size: 13px; color: #374151; line-height: 1.6; }
