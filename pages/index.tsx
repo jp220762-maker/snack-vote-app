@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+ import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import { supabase, SnackItem, VoteSession } from '../lib/supabase'
 import { getVoterFingerprint } from '../lib/fingerprint'
@@ -128,8 +128,8 @@ export default function Home() {
       const res = await fetch('/api/fetch-product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: urlInput.trim() }) })
       const data = await res.json()
       if (!res.ok) { showToast(data.error || '抓取失敗，請手動填寫'); showManual(); return }
-      setPreview(data); setFormName(data.name || ''); setFormPrice(data.price ? String(data.price) : ''); setFormStore(data.store || '其他')
-      if (data.name) showToast('商品資料已帶入，請確認後加入')
+      setPreview(data); setFormName(data.name || ''); setFormPrice(data.price ? String(data.price) : ''); setFormStore(data.store || '其他'); setFormType(data.type || 'snack')
+      if (data.name) showToast(`商品資料已帶入，已自動辨識為${data.type === 'drink' ? '飲料' : '零食'}，請確認`)
       else showToast('請手動填寫商品資料')
     } finally { setFetching(false) }
   }
@@ -176,6 +176,12 @@ export default function Home() {
     if (!confirm('確定刪除此品項？')) return
     await supabase.from('snack_items').delete().eq('id', id)
     if (session) loadItems(session.id)
+  }
+
+  async function changeType(id: string, newType: 'snack' | 'drink') {
+    await supabase.from('snack_items').update({ type: newType }).eq('id', id)
+    if (session) loadItems(session.id)
+    showToast(newType === 'drink' ? '已改為飲料' : '已改為零食')
   }
 
   function generatePlan() {
@@ -261,7 +267,7 @@ export default function Home() {
             <div className={styles.rulesBox}>
               <div className={styles.rulesTitle}>📋 投票規則</div>
               <div className={styles.rulesContent}>
-                {rules.split('\n').map((line, i) => <div key={i} className={styles.rulesLine}>{line.split(/(https?:\/\/[^\s]+)/g).map((p,j)=>/(https?:\/\/[^\s]+)/.test(p)?<a key={j} href={p} target="_blank" rel="noopener noreferrer" style={{color:'#113285',fontWeight:600}}>{p}</a>:p)}</div>)}
+                {rules.split('\n').map((line, i) => <div key={i} className={styles.rulesLine}>{line}</div>)}
               </div>
             </div>
             <div className={styles.statsRow}>
@@ -519,6 +525,10 @@ export default function Home() {
                           <span style={{ fontSize: 12, color: '#113285', fontWeight: 600, minWidth: 60 }}>= NT${subtotal}</span>
                         </div>
                       )}
+                      <button onClick={() => changeType(item.id, item.type === 'drink' ? 'snack' : 'drink')}
+                        style={{ padding: '4px 10px', fontSize: 12, border: '1.5px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#6b7280', flexShrink: 0 }}>
+                        {item.type === 'drink' ? '改為零食' : '改為飲料'}
+                      </button>
                       {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.buyLink}>下單 →</a>}
                       <button className={styles.delBtn} onClick={() => deleteItem(item.id)}>刪除</button>
                     </div>
