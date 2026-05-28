@@ -13,18 +13,27 @@ const STORE_MAP: Record<string, string> = {
   'etmall.com.tw': '東森購物',
   'costco.com.tw': 'Costco',
   'rt-mart.com.tw': '大潤發',
-  'wellcome.com.tw': '頂好',
-  '7-11.com.tw': '7-ELEVEN',
-  'ibon.com.tw': '7-ELEVEN',
-  'family.com.tw': '全家',
-  'hilife.com.tw': '萊爾富',
   'yahoo.com': 'Yahoo購物',
   'buy.yahoo.com': 'Yahoo購物',
   'books.com.tw': '博客來',
   'ruten.com.tw': '露天市集',
   'rakuten.com.tw': '樂天',
-  'senao.com.tw': '神腦',
-  'coupang.com': 'Coupang',
+}
+
+const DRINK_KEYWORDS = [
+  '茶', '咖啡', '飲料', '汽水', '果汁', '水', '奶', '牛奶', '豆漿',
+  '可樂', '啤酒', '酒', '礦泉水', '蘇打', '拿鐵', '美式', '抹茶',
+  '紅茶', '綠茶', '烏龍', '冬瓜', '薑汁', '運動飲料', '能量飲料',
+  'drink', 'juice', 'water', 'tea', 'coffee', 'milk', 'soda',
+  '罐裝', 'ml', 'ML', '瓶裝', '鋁罐',
+]
+
+function detectType(name: string): 'snack' | 'drink' {
+  const lower = name.toLowerCase()
+  for (const kw of DRINK_KEYWORDS) {
+    if (lower.includes(kw.toLowerCase())) return 'drink'
+  }
+  return 'snack'
 }
 
 function detectStore(url: string): string {
@@ -95,9 +104,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .slice(0, 60)
     const image_url = extractMeta(html, 'og:image') || null
     const price = extractPrice(html)
-    return res.status(200).json({ name: name || '', image_url, price, store, url })
+    const type = detectType(name)
+    return res.status(200).json({ name: name || '', image_url, price, store, url, type })
   } catch (e: any) {
-    if (e.name === 'AbortError') return res.status(200).json({ name: '', image_url: null, price: null, store, url })
-    return res.status(200).json({ name: '', image_url: null, price: null, store, url })
+    if (e.name === 'AbortError') return res.status(200).json({ name: '', image_url: null, price: null, store, url, type: 'snack' })
+    return res.status(200).json({ name: '', image_url: null, price: null, store, url, type: 'snack' })
   }
 }
